@@ -1,0 +1,3 @@
+# Trigger our script any time ADP0 (mains) status changes
+SUBSYSTEM=="power_supply", KERNEL=="ADP0", ACTION=="change", \
+  RUN+="/usr/local/bin/power-mode-switch.sh"

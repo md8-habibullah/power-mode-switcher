@@ -1,0 +1,13 @@
+[Unit]
+Description=Auto‑switch GNOME power profile on boot & resume
+After=multi-user.target suspend.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/power-mode-switch.sh
+
+[Install]
+# Run on normal boot…
+WantedBy=multi-user.target
+# …and after resume from suspend
+WantedBy=suspend.target
