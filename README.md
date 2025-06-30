@@ -42,7 +42,7 @@ power-mode-switcher/
 1. **Clone the repository**:
 
    ```bash
-   git clone https://github.com/<your-username>/power-mode-switcher.git
+   git clone https://github.com/md8-habibullah/power-mode-switcher.git
    cd power-mode-switcher
    ```
 
