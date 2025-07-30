@@ -1,143 +1,86 @@
-```markdown
 # Power Mode Switcher
 
-Automatically switch GNOME/KDE power profiles between **balanced** and **power-saver** based on your laptop’s AC status (plugged/unplugged), and ensure the correct profile is applied on boot and after resume — on **Debian/Ubuntu**, **Arch-based**, and **Fedora/RHEL/CentOS** systems.
-
----
-
-## 🚀 Features
-
-- **Automatic switching** on plug/unplug via a udev rule  
-- **Profile application** on system boot & resume via systemd  
-- **Cross-distro installer** that detects your package manager and sets up everything for you  
-- **Clear, colored output** and built-in error handling  
-- **One-command install/uninstall**  
-
----
+Automatically switch power profiles between **Balanced** and **Power Saver** based on laptop power status (plugged/unplugged), including on boot and resume — now with **cross‑distro support**!
 
 ## 📂 Repository Layout
-
 ```
-
 power-mode-switcher/
 ├── LICENSE
-├── README.md            # You are here
-├── install.sh           # Cross-distro installer
-├── uninstall.sh         # Clean-up script
+├── README.md            # This file
+├── install.sh           # Cross‑distro installation script
+├── uninstall.sh         # Uninstallation script
 └── src/
-├── power-mode-switch.sh   # Core switching logic
+├── power-mode-switch.sh   # Main switching script
 ├── 99-power-mode.rules    # udev rule
-└── power-mode.service     # systemd unit
+└── power-mode.service     # systemd service definition
+```
+---
 
-````
+## ⚙️ Supported Distributions
+
+- **Debian / Ubuntu / Zorin** (APT)
+- **Arch / Manjaro / EndeavourOS** (Pacman)
+- **Fedora / RHEL / CentOS** (DNF / tuned‑ppd)
 
 ---
 
-## ⚙️ Prerequisites
+## 🛠️ Prerequisites
 
-- **Bash**, **systemd**, **udev** (default on all target distros)  
-- **Root privileges** (or via `sudo`) to install files and enable services  
-- A **modern GNOME/KDE** environment with `powerprofilesctl` support (or Fedora’s `tuned-ppd`)  
+- A modern GNOME or KDE desktop with **`powerprofilesctl`** support  
+- **`bash`**, **`udev`**, **`systemd`** (default on all supported distros)  
+- **Root** or sudo privileges to install/uninstall  
 
 ---
 
-## 📥 Installation
+## 🚀 Installation
 
-1. **Clone & enter** the repo:
+1. **Clone & enter repo**  
    ```bash
    git clone https://github.com/md8-habibullah/power-mode-switcher.git
    cd power-mode-switcher
-````
+   ```
 
-2. **Ensure executables**:
+2. **Make scripts executable**
 
    ```bash
    chmod +x install.sh uninstall.sh src/power-mode-switch.sh
    ```
 
-3. **Run the installer**:
+3. **Run the installer**
 
    ```bash
    ./install.sh
    ```
 
-   You’ll see colored `[INFO]`, `[ OK ]` and `[ERR ]` messages. The script will:
+   You’ll see **coloured**, step‑by‑step output:
 
-   * Detect your package manager (`apt`, `pacman`, or `dnf`)
-   * Install `power-profiles-daemon` (or `tuned-ppd` on Fedora ≥ 41)
-   * Copy the switch script, udev rule, and systemd service into place
-   * Reload systemd & udev and enable all relevant services
+   * Detects your package manager (`apt`, `pacman`, or `dnf`)
+   * Installs **`power-profiles-daemon`** (or swaps in **`tuned‑ppd`** on Fedora ≥ 41)
+   * Copies the switch script, udev rule, and systemd unit into place
+   * Reloads systemd & udev, then **enables** all services
 
 ---
 
-## 🔍 How It Works
+## 🔍 Testing & Manual Use
 
-1. **On plug/unplug**
-   The udev rule (`99-power-mode.rules`) watches `/sys/class/power_supply/*/online` events and runs `power-mode-switch.sh`.
+1. **Automatic switching**
 
-2. **On boot & resume**
-   The systemd unit (`power-mode.service`) is hooked into normal boot (`multi-user.target`) and suspend/resume (`suspend.target`).
+   * **Plug** or **unplug** your AC adapter → runs automatically
+   * **Suspend** & **resume** → runs on wake
 
-3. **Switch logic**
-   `power-mode-switch.sh` detects the correct AC device (e.g. `ADP0`, `AC`, `ACAD`) and:
+2. **Check current profile**
 
    ```bash
-   if online=1 → powerprofilesctl set balanced
-   else         → powerprofilesctl set power-saver
+   powerprofilesctl get
    ```
 
----
+   (on Fedora/RHEL with tuned‑ppd you can also run `tuned-adm active`)
 
-## ✅ Testing & Usage
+3. **Manual invocation**
 
-### 1. Check current profile
-
-* **Debian/Ubuntu/Arch** (using `power-profiles-daemon`):
-
-  ```bash
-  powerprofilesctl get
-  ```
-* **Fedora/CentOS/RHEL** (if using `tuned-ppd`):
-
-  ```bash
-  tuned-adm active
-  ```
-
-### 2. Manual switch
-
-```bash
-# Balanced/performance-like
-powerprofilesctl set balanced  
-# Max power savings
-powerprofilesctl set power-saver  
-# Or via tuned
-tuned-adm profile balanced
-tuned-adm profile powersave
-```
-
-### 3. Simulate events
-
-* **Plug/unplug** your charger → then re-run `powerprofilesctl get`
-* **Suspend/resume**:
-
-  ```bash
-  systemctl suspend && sleep 5 && echo "Resumed!"
-  powerprofilesctl get
-  ```
-
-### 4. One-line alias (optional)
-
-Add to `~/.bashrc` / `~/.zshrc`:
-
-```bash
-alias pget='powerprofilesctl get 2>/dev/null || tuned-adm active'
-```
-
-Then simply run:
-
-```bash
-pget
-```
+   ```bash
+   sudo /usr/local/bin/power-mode-switch.sh
+   ```
 
 ---
 
