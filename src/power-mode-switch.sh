@@ -1,20 +1,17 @@
 #!/usr/bin/env bash
-# Detect AC status (ADP0) and switch GNOME power profile.
+set -euo pipefail
 
-AC_PATH="/sys/class/power_supply/ADP0/online"
+# Try common power_supply names for AC
+STATUS=""
+for P in /sys/class/power_supply/ADP* /sys/class/power_supply/AC* /sys/class/power_supply/ACAD*; do
+  [[ -f "$P/online" ]] && { STATUS=$(<"$P/online"); break; }
+done
 
-if [[ -f "$AC_PATH" ]]; then
-  STATUS=$(<"$AC_PATH")
-else
-  STATUS=0
-fi
+# Default to "on battery" if nothing found
+: "${STATUS:=0}"
 
 if [[ "$STATUS" -eq 1 ]]; then
   powerprofilesctl set balanced
 else
   powerprofilesctl set power-saver
 fi
-
-# Optional logging—uncomment to enable:
-# echo "$(date): STATUS=$STATUS → $(powerprofilesctl get)" \
-#   >> /var/log/power-mode.log
