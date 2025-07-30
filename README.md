@@ -5,10 +5,10 @@ Automatically switch power profiles between **Balanced** and **Power Saver** bas
 ## 📂 Repository Layout
 ```
 power-mode-switcher/
-├── LICENSE
 ├── README.md            # This file
 ├── install.sh           # Cross‑distro installation script
 ├── uninstall.sh         # Uninstallation script
+├── LICENSE
 └── src/
 ├── power-mode-switch.sh   # Main switching script
 ├── 99-power-mode.rules    # udev rule
