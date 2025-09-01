@@ -1,3 +1,4 @@
-# Trigger our script any time ADP0 (mains) status changes
-SUBSYSTEM=="power_supply", KERNEL=="ADP0", ACTION=="change", \
-  RUN+="/usr/local/bin/power-mode-switch.sh"
+# /etc/udev/rules.d/99-power-mode.rules
+# trigger the system service on any power_supply change (plug/unplug)
+SUBSYSTEM=="power_supply", ACTION=="change", TAG+="systemd", ENV{SYSTEMD_WANTS}="power-mode.service"
+

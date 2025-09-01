@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ─── Colours & Helpers ─────────────────────────────────────────────────────────
+# ─── Colours & Helpers ──────────────────────────────────────────────
 RED="\e[31m"; GREEN="\e[32m"; YELLOW="\e[33m"; BLUE="\e[34m"; RESET="\e[0m"
 
 info()    { echo -e "${BLUE}[INFO]${RESET} $*"; }
@@ -9,35 +9,39 @@ success() { echo -e "${GREEN}[ OK ]${RESET} $*"; }
 warning() { echo -e "${YELLOW}[WARN]${RESET} $*"; }
 error()   { echo -e "${RED}[ERR ]${RESET} $*"; exit 1; }
 
-# ─── 1. Detect distro & install deps ────────────────────────────────────────────
+# ─── 1. Detect package manager ──────────────────────────────────────
 info "Detecting package manager…"
-if   command -v apt   &>/dev/null; then PKG=apt
+if   command -v dnf   &>/dev/null; then PKG=dnf
+elif command -v apt   &>/dev/null; then PKG=apt
 elif command -v pacman&>/dev/null; then PKG=pacman
-elif command -v dnf   &>/dev/null; then PKG=dnf
 else
   error "Unsupported distro. Manual install required."
 fi
 success "Found package manager: $PKG"
 
+# ─── 2. Install deps ────────────────────────────────────────────────
 info "Installing power profile daemon…"
 case "$PKG" in
-  apt)
-    sudo apt update -qq
-    sudo apt install -y power-profiles-daemon ;;
-  pacman)
-    sudo pacman -Syu --noconfirm power-profiles-daemon ;;
   dnf)
-    # Fedora ≥41 uses tuned-ppd by default
+    # Fedora ≥41
     if rpm -q tuned-ppd &>/dev/null; then
       sudo dnf install -y tuned-ppd
-      sudo dnf swap -y power-profiles-daemon tuned-ppd
+      DAEMON="tuned-ppd"
     else
       sudo dnf install -y power-profiles-daemon
+      DAEMON="power-profiles-daemon"
     fi ;;
+  apt)
+    sudo apt update -qq
+    sudo apt install -y power-profiles-daemon
+    DAEMON="power-profiles-daemon" ;;
+  pacman)
+    sudo pacman -Syu --noconfirm power-profiles-daemon
+    DAEMON="power-profiles-daemon" ;;
 esac
-success "Dependency installed"
+success "Dependency installed: $DAEMON"
 
-# ─── 2. Copy files ─────────────────────────────────────────────────────────────
+# ─── 3. Copy files ──────────────────────────────────────────────────
 info "Copying files to system locations…"
 sudo install -m755 src/power-mode-switch.sh /usr/local/bin/power-mode-switch.sh \
   || error "Failed to install switch script"
@@ -45,34 +49,32 @@ sudo install -m644 src/99-power-mode.rules /etc/udev/rules.d/99-power-mode.rules
   || error "Failed to install udev rule"
 sudo install -m644 src/power-mode.service /etc/systemd/system/power-mode.service \
   || error "Failed to install systemd service"
+
+# If tuned-ppd is used, patch service ExecStart to use tuned-adm
+if [[ "$DAEMON" == "tuned-ppd" ]]; then
+  sudo sed -i 's|powerprofilesctl|tuned-adm profile|g' /etc/systemd/system/power-mode.service
+fi
 success "Files copied"
 
-# ─── 3. Enable & reload ─────────────────────────────────────────────────────────
+# ─── 4. Enable services ─────────────────────────────────────────────
 info "Reloading systemd & udev rules…"
 sudo systemctl daemon-reload
 sudo udevadm control --reload-rules
 success "Reload complete"
 
 info "Enabling services…"
-sudo systemctl enable --now power-mode.service \
-  || warning "power-mode.service failed to enable"
-# enable power daemon
-if   systemctl list-unit-files | grep -q '^power-profiles-daemon'; then
-  sudo systemctl enable --now power-profiles-daemon.service
-elif systemctl list-unit-files | grep -q '^tuned-ppd'; then
-  sudo systemctl enable --now tuned-ppd.service
-fi
+sudo systemctl enable --now "$DAEMON".service || true
+sudo systemctl enable --now power-mode.service || warning "power-mode.service failed to enable"
 success "Services enabled"
 
-# ─── 4. Finish ─────────────────────────────────────────────────────────────────
+# ─── 5. Finish ──────────────────────────────────────────────────────
 cat <<EOF
 
 ${GREEN}✅  Installation complete!${RESET}
 
 ▶️  To test now:
    • Plug/unplug your AC adapter
-     → run: ${YELLOW}powerprofilesctl get${RESET}
-     → should toggle between "balanced" and "power-saver"
+     → run: ${YELLOW}${DAEMON=="tuned-ppd" ? "tuned-adm active" : "powerprofilesctl get"}${RESET}
 
    • Suspend & resume
      → same check
@@ -90,3 +92,4 @@ ${GREEN}✅  Installation complete!${RESET}
      && echo "🗑️  Uninstalled."
 
 EOF
+
